@@ -1,7 +1,7 @@
 const polka = require('polka');
 const Sequelize = require('sequelize');
 const app = require('./app');
-
+const PlotModel = require('./models/plotModel.js')
 const PORT = 3000;
 
 const routes = (app) => {
@@ -10,32 +10,38 @@ const routes = (app) => {
   });
 }
 
-const awsDB = new Sequelize('api_db', 'api_db_user', '1234abcd', {
-  dialect: 'postgres',
-  host: "apidb.ckemdgxc8x7t.us-east-2.rds.amazonaws.com",
-  port: 5432,
-})
-
-
-const googleDB = new Sequelize('postgres', 'postgres', '1234abcd', {
-  dialect: 'postgres',
-  host: "35.193.151.178",
-  port: 5432,
-})
-
-awsDB
-  .authenticate()
-  .then(() => {
-    console.log('Connection with AWS has been established successfully. Continue with Google Cloud');
-    googleDB
-      .authenticate()
-      .then(() => {
-        console.log('Connection with Google has been established successfully. Starting Server...');
-        app.listen(3000, err => {
-          console.log(`> Running on localhost:3000`);
-        });
-      })
+try {
+  var db_parcelas = new Sequelize('ec2ce_data_sigpac', 'emergya', 'fTo;Q3U74Pvh', {
+    define: {
+      freezeTableName: true
+    },
+    dialect: 'postgres',
+    host: "oliviagpc.crsfqfthjuif.eu-west-1.rds.amazonaws.com",
+    port: 5432,
   })
-  .catch(err => {
-    console.error('Unable to connect to databases:', err);
+} catch (e) {
+    return console.error('Unable to connect to database:', e);
+}
+
+const Plot = PlotModel(db_parcelas, Sequelize)
+
+app
+  .get('/api/plot/:sigpac', (req, res, next) => {
+    console.log(`Searching Plot with Sigpac =>`, req.params.sigpac);
+    Plot
+      .findOne({
+        where: {sigpac: req.params.sigpac}
+      }).then((plot) => {
+        console.log(plot);
+      })
+    return next();
+  })
+  .get('/', (req, res, next) => {
+    console.log('Hola mundo');
+    return next();
+  })
+  .listen(PORT, err => {
+    if(err) {
+      console.error(err);
+    }
   });
